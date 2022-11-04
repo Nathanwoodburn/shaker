@@ -133,7 +133,7 @@ async def verify(
 
     for part in parts:
         if not re.match(r'[A-Za-z0-9-_]+$', part):
-            return await inter.response.send_message(f"`{name}` is not a valid Handshake name.")
+            return await inter.response.send_message(f"`{name}` is not a valid Handshake name.", ephemeral=True)
 
     try:
         name_rendered = name_idna.decode("idna")
