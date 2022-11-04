@@ -37,7 +37,13 @@ async def handle_role(member: disnake.Member, shouldHaveRole: bool) -> None:
     with open('roles.json', 'r') as f:
         roles = json.load(f)
 
-    role_id = roles[str(member.guild.id)]
+    key = str(member.guild.id)
+
+    if not key in roles:
+        return
+
+    role_id = roles[key]
+
     if role_id:
         guild = member.guild
         role = guild.get_role(role_id)
