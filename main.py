@@ -5,6 +5,7 @@ import dns.exception
 import dns.message
 import json
 import os
+import re
 from disnake.ext import commands
 from dotenv import load_dotenv
 
@@ -124,23 +125,27 @@ async def verify(
     name: The Handshake name you'd like to verify ownership of.
     """
 
-    _name = name
+    name_idna = name.lower().strip().rstrip("/").encode("idna")
 
-    name = name.strip()
+    name_ascii = name_idna.decode("ascii")
 
-    if name[-1] == "/":
-        name = name[0:-1]
+    parts = name_ascii.split(".")
 
-    name = name.encode("idna")
+    for part in parts:
+        if not re.match(r'[A-Za-z0-9-_]+$', part):
+            return await inter.response.send_message(f"`{name}` is not a valid Handshake name.")
 
-    parts = name.decode("utf-8").split(".")
-    tld = parts[-1]
+    try:
+        name_rendered = name_idna.decode("idna")
+    except UnicodeError: # don't render invalid punycode
+        name_rendered = name_ascii
 
-    if check_name(inter.author.id, name.decode("utf-8")):
+
+    if check_name(inter.author.id, name_ascii):
         try:
-            await inter.author.edit(nick=name.decode("idna") + "/")
+            await inter.author.edit(nick=name_rendered + "/")
             await handle_role(inter.author, True)
-            return await inter.response.send_message(f"Your display name has been set to `{name.decode('idna')}/`", ephemeral=True)
+            return await inter.response.send_message(f"Your display name has been set to `{name_rendered}/`", ephemeral=True)
         except disnake.errors.Forbidden:
             return await inter.response.send_message("I could not set your nickname because I do not have permission to. (Are you the server owner?)", ephemeral=True)
 
@@ -157,10 +162,10 @@ async def verify(
     records = records.decode("utf-8")
 
     await inter.response.send_message(
-        f"To verify that you own `{name.decode('idna')}/` please create a TXT record located at `_shaker._auth.{name.decode('utf-8')}` with the following data: `{inter.author.id}`.\n\n"
+        f"To verify that you own `{name_rendered}/` please create a TXT record located at `_shaker._auth.{name_ascii}` with the following data: `{inter.author.id}`.\n\n"
         f"If you use Namebase, you can do this automatically by visiting the following link:\n"
-        f"<https://namebase.io/next/domain-manager/{tld}/records?records={records}>\n\n"
-        f"Once the record is set, you can use `/verify {_name}` again or manually set your nickname to `{name.decode('idna')}/`.",
+        f"<https://namebase.io/next/domain-manager/{parts[-1]}/records?records={records}>\n\n"
+        f"Once the record is set (this may take a few minutes) you can run this command again or manually set your nickname to `{name_rendered}/`.",
 	ephemeral=True
     )
 
